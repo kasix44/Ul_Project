@@ -18,6 +18,11 @@
 #include <fcntl.h>
 #include <time.h>
 
+/*
+  Struktura z danymi o ulu i globalnym stanie.
+  Obsługa błędów: używamy perror() i errno w kluczowych miejscach (np. przy funkcjach systemowych).
+*/
+
 #define MAX_BEES 1000
 
 typedef struct {
@@ -29,7 +34,7 @@ typedef struct {
 
     pthread_mutex_t hiveMutex; // Mutex do synchronizacji
 
-    int beesAlive;
+    int beesAlive;         // Ilość żywych pszczół (robotnice + ewentualnie nowe)
 } HiveData;
 
 #endif
