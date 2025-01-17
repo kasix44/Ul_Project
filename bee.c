@@ -4,7 +4,7 @@ void* beeWorker(void* arg) {
     BeeArgs* bee = (BeeArgs*)arg;
     HiveData* hive = bee->hive;
 
-    // Ziarno losowe, by pszczoły miały różne zachowanie
+    // Różne ziarno losowe dla każdej pszczoły (oparte np. o id)
     srand(time(NULL) + bee->id);
 
     while (bee->visits < bee->maxVisits) {
