@@ -7,8 +7,23 @@
 
 #include "hive.h"
 
+void sigterm_handler(){
+    printf("[KROLOWA] zabita ....\n");
+    kill(0, SIGINT);
+    exit(1);
+    }
+
 void queen_proc(hive_t *hive, int semid)
 {
+
+    struct sigaction sa;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+
+    sa.sa_handler = sigterm_handler;
+    sigaction(SIGTERM, &sa, NULL);
+
+
     printf("[KRÓLOWA] Start (PID=%d), co %d sekund składam jaja.\n",
            getpid(), hive->queen_interval);
 

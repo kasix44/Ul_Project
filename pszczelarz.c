@@ -38,11 +38,17 @@ void beekeeper_proc(hive_t *hive, int semid)
     sa.sa_handler = sigterm_handler;
     sigaction(SIGTERM, &sa, NULL);
 
-    sa.sa_handler = sigusr1_handler;
-    sigaction(SIGUSR1, &sa, NULL);
+     struct sigaction sa1;
+    sa1.sa_flags = 0;
 
-    sa.sa_handler = sigusr2_handler;
-    sigaction(SIGUSR2, &sa, NULL);
+    sa1.sa_handler = sigusr1_handler;
+    sigaction(SIGUSR1, &sa1, NULL);
+
+    struct sigaction sa2;
+    sa2.sa_flags = 0;
+
+    sa2.sa_handler = sigusr2_handler;
+    sigaction(SIGUSR2, &sa2, NULL);
 
     printf("[PSZCZELARZ] Start (PID=%d)\n", getpid());
 
