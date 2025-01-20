@@ -8,7 +8,12 @@
 #include <unistd.h>
 
 #include "hive.h"
-
+union semun {
+    int val;                 // wartośc dla SETVAL
+    struct semid_ds *buf;    // bufor dla IPC_STAT, IPC_SET
+    unsigned short *array;   // tablica dla GETALL, SETALL
+    struct seminfo *__buf;   // bufor dla IPC_INFO 
+};
 int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **ptr_out)
 {
     key_t key_shm = ftok("/tmp", 81);
