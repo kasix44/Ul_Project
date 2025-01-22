@@ -1,13 +1,19 @@
+/* pszczola.c -> kompilujemy do 'pszczola' */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/sem.h>
+#include <sys/shm.h>
 
 #include "hive.h"
+
+/* Bez lokalnych deklaracji sem_down/sem_up – korzystamy z hive.h + sync.c */
 
 void enter_hive(hive_t *hive, int semid)
 {
     sem_down(semid, SEM_CAP);
+
     int ent = rand() % 2;
     while (1) {
         sem_down(semid, SEM_MUTEX);
@@ -95,11 +101,25 @@ void exit_hive(hive_t *hive, int semid)
     sem_up(semid, SEM_MUTEX);
 }
 
-void bee_proc(hive_t *hive, int semid, int bee_id)
+int main(int argc, char *argv[])
 {
+    if (argc < 4) {
+        fprintf(stderr, "Użycie: %s <shmid> <semid> <bee_id>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    int shmid = atoi(argv[1]);
+    int semid = atoi(argv[2]);
+    int bee_id = atoi(argv[3]);
+
+    hive_t *hive = (hive_t*) shmat(shmid, NULL, 0);
+    if (hive == (void*)-1) {
+        perror("shmat pszczola");
+        exit(EXIT_FAILURE);
+    }
+
     srand(getpid() ^ time(NULL));
     int Ti = 1 + (rand() % 5);          // 1..5 s w ulu
-    int Xi = 1 + (rand() % MAX_VISITS); // 1..MAX_VISITS
+    int Xi = 1 + (rand() % MAX_VISITS); // ile razy odwiedzi ul
 
     printf("[PSZCZOŁA %d PID=%d] Start; Ti=%d, Xi=%d\n",
            bee_id, getpid(), Ti, Xi);
@@ -123,6 +143,7 @@ void bee_proc(hive_t *hive, int semid, int bee_id)
                bee_id, inside, outside);
 
         if (visits >= Xi) {
+            /* Umiera */
             sem_down(semid, SEM_MUTEX);
             hive->living_bees--;
             printf("[PSZCZOŁA %d] Umieram... (living=%d)\n",
@@ -133,4 +154,7 @@ void bee_proc(hive_t *hive, int semid, int bee_id)
 
         sleep(1 + (rand() % 3));
     }
+
+    shmdt(hive);
+    return 0;
 }

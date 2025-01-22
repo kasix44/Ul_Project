@@ -8,7 +8,7 @@ void sem_down(int semid, int sem_num)
 {
     struct sembuf op;
     op.sem_num = sem_num;
-    op.sem_op  = -1;
+    op.sem_op  = -1;  /* P (down) */
     op.sem_flg = 0;
 
     while (semop(semid, &op, 1) < 0) {
@@ -23,7 +23,7 @@ void sem_up(int semid, int sem_num)
 {
     struct sembuf op;
     op.sem_num = sem_num;
-    op.sem_op  = 1;
+    op.sem_op  = 1;   /* V (up) */
     op.sem_flg = 0;
 
     while (semop(semid, &op, 1) < 0) {

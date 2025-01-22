@@ -1,19 +1,18 @@
+/* pszczelarz.c -> kompiluje się do 'pszczelarz' */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
-#include <sys/types.h>
 
 #include "hive.h"
 
-/* Zmienne globalne (tylko dla pszczelarza) */
+/* Zmienne globalne */
 static volatile sig_atomic_t g_stop     = 0;
 static volatile sig_atomic_t g_increase = 0;
 static volatile sig_atomic_t g_decrease = 0;
 
-/* Handlery sygnałów */
 static void sigterm_handler(int signo) {
     (void) signo;
     g_stop = 1;
@@ -27,12 +26,25 @@ static void sigusr2_handler(int signo) {
     g_decrease = 1;
 }
 
-void beekeeper_proc(hive_t *hive, int semid)
+int main(int argc, char *argv[])
 {
-    /* Ustawiamy obsługę sygnałów w tym procesie */
+    if (argc < 3) {
+        fprintf(stderr, "Użycie: %s <shmid> <semid>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    int shmid = atoi(argv[1]);
+    int semid = atoi(argv[2]);
+
+    hive_t *hive = (hive_t*) shmat(shmid, NULL, 0);
+    if (hive == (void*)-1) {
+        perror("shmat pszczelarz");
+        exit(EXIT_FAILURE);
+    }
+
     struct sigaction sa;
     sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
+
     sa.sa_handler = sigterm_handler;
     sigaction(SIGTERM, &sa, NULL);
 
@@ -100,4 +112,7 @@ void beekeeper_proc(hive_t *hive, int semid)
     }
 
     printf("[PSZCZELARZ] Koniec.\n");
+
+    shmdt(hive);
+    return 0;
 }

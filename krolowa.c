@@ -1,3 +1,4 @@
+/* krolowa.c -> kompiluje się do 'krolowa' */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -8,56 +9,69 @@
 
 #include "hive.h"
 
-/* Flaga globalna, że mamy się zakończyć */
-static volatile sig_atomic_t g_killme = 0;
+/* Flaga globalna – zatrzymanie królowej */
+static volatile sig_atomic_t g_stop = 0;
 
-/* Wątek czyściciela zombie */
+/* Wątek reaper – zbiera zakończone dzieci królowej (pszczoły) */
 static void* reaper_thread(void *arg)
 {
     (void)arg;
-    while (!g_killme) {
+    while (!g_stop) {
         int status;
         pid_t pid = waitpid(-1, &status, WNOHANG);
         if (pid > 0) {
-            // Zebrano zakończone dziecko
+            // zebrano zakończonego potomka
         } else if (pid == 0) {
-            // Nic do zebrania
-            usleep(200000); // 0.2 s
+            // brak do zbierania
+            usleep(200000);
         } else {
-            // Błąd lub brak dzieci
+            // brak dzieci lub błąd
             usleep(200000);
         }
     }
     return NULL;
 }
 
-/* Handler SIGTERM -> kończymy pętlę */
+/* Handler SIGTERM */
 static void sigterm_handler(int signo) {
     (void)signo;
     printf("[KROLOWA] otrzymała SIGTERM, kończę...\n");
-    g_killme = 1;
+    g_stop = 1;
 }
 
-/* Właściwa logika królowej */
-void queen_proc(hive_t *hive, int semid)
+int main(int argc, char *argv[])
 {
-    /* Obsługa sygnału SIGTERM */
+    if (argc < 3) {
+        fprintf(stderr, "Użycie: %s <shmid> <semid>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    int shmid = atoi(argv[1]);
+    int semid = atoi(argv[2]);
+
+    hive_t *hive = (hive_t*) shmat(shmid, NULL, 0);
+    if (hive == (void*)-1) {
+        perror("shmat krolowa");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Obsługa SIGTERM */
     struct sigaction sa;
     sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
     sa.sa_handler = sigterm_handler;
     sigaction(SIGTERM, &sa, NULL);
 
-    /* Uruchamiamy wątek czyściciela zombie */
+    /* Uruchamiamy wątek reaper */
     pthread_t tid;
     pthread_create(&tid, NULL, reaper_thread, NULL);
 
     printf("[KROLOWA] Start (PID=%d), co %d sekund składam jaja.\n",
            getpid(), hive->queen_interval);
 
-    while (!g_killme) {
+    while (!g_stop) {
         sleep(hive->queen_interval);
 
+        /* Sprawdzamy, czy w ulu jest miejsce */
         sem_down(semid, SEM_MUTEX);
         int canLay = (hive->living_bees < hive->max_capacity);
         sem_up(semid, SEM_MUTEX);
@@ -69,32 +83,34 @@ void queen_proc(hive_t *hive, int semid)
                 continue;
             }
             if (pid == 0) {
-                /* dziecko = nowa pszczoła */
+                /* dziecko – nowa pszczoła */
                 sem_down(semid, SEM_MUTEX);
                 int new_id = hive->total_bees + 1;
                 hive->total_bees++;
                 hive->living_bees++;
-                printf("[KROLOWA] Nowa pszczoła #%d (PID=%d)\n", new_id, getpid());
+                printf("[KROLOWA] Nowa pszczoła #%d (PID=%d)\n",
+                       new_id, getpid());
                 sem_up(semid, SEM_MUTEX);
 
-                /* Uruchamiamy TEGO SAMEGO binarka z argv[0] = "pszczola" */
                 char shm_str[32], sem_str[32], bee_str[32];
-                snprintf(shm_str, sizeof(shm_str), "%d",
-                         shmget(ftok("/tmp", 81), 0, 0)); /* aktualny shmid */
+                snprintf(shm_str, sizeof(shm_str), "%d", shmid);
                 snprintf(sem_str, sizeof(sem_str), "%d", semid);
                 snprintf(bee_str, sizeof(bee_str), "%d", new_id);
 
-                execl("./ul", "pszczola", shm_str, sem_str, bee_str, (char*)NULL);
+                execl("./pszczola", "pszczola", shm_str, sem_str, bee_str, (char*)NULL);
                 perror("[KROLOWA] execl pszczola");
                 _exit(1);
             }
-            /* rodzic = królowa -> wracamy do pętli */
+            /* rodzic -> królowa */
         }
     }
 
     /* Kończymy wątek reaper */
-    g_killme = 1;
+    g_stop = 1;
     pthread_join(tid, NULL);
 
     printf("[KROLOWA] Koniec.\n");
+
+    shmdt(hive);
+    return 0;
 }

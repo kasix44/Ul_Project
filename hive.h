@@ -13,17 +13,17 @@
 #define MAX_VISITS 10
 #define SEM_COUNT  6
 
-/* Numery semaforów w tablicy */
+/* Indeksy semaforów */
 enum {
-    SEM_MUTEX = 0,   // ochrona sekcji krytycznej
-    SEM_CAP,         // ograniczenie liczby pszczół w ulu
+    SEM_MUTEX = 0,
+    SEM_CAP,
     SEM_ENT0_IN,
     SEM_ENT0_OUT,
     SEM_ENT1_IN,
     SEM_ENT1_OUT
 };
 
-/* Struktura przechowywana w pamięci dzielonej */
+/* Struktura „ula” w pamięci dzielonej */
 typedef struct {
     int N;
     int P;
@@ -33,7 +33,7 @@ typedef struct {
     int living_bees;
     int queen_interval;
 
-    /* Dwa wejścia (0 i 1), mogą być: 0=idle, 1=inbound, 2=outbound */
+    /* Stan dwóch wejść (0 i 1): 0=idle, 1=inbound, 2=outbound */
     int direction[2];
     int count[2];
     int wait_inbound[2];
@@ -47,14 +47,5 @@ void cleanup_system(int shmid, int semid, hive_t *ptr);
 /* Funkcje z sync.c */
 void sem_down(int semid, int sem_num);
 void sem_up(int semid, int sem_num);
-
-/* Interfejs "procedur" – wywoływanych w różnych procesach */
-void beekeeper_proc(hive_t *hive, int semid);
-void queen_proc(hive_t *hive, int semid);
-void bee_proc(hive_t *hive, int semid, int bee_id);
-
-/* Pomocnicze dla pszczoły */
-void enter_hive(hive_t *hive, int semid);
-void exit_hive(hive_t *hive, int semid);
 
 #endif

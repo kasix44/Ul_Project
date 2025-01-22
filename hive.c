@@ -16,6 +16,7 @@ union semun {
     struct seminfo *__buf;   // bufor dla IPC_INFO 
 };
 
+
 int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **ptr_out)
 {
     key_t key_shm = ftok("/tmp", 81);
@@ -37,7 +38,7 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
         return -1;
     }
 
-    /* Inicjalizacja wartości w pamięci dzielonej */
+    /* Inicjalizacja ula */
     hive->N              = N;
     hive->P              = P;
     hive->current_inside = 0;
@@ -53,7 +54,6 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
         hive->wait_outbound[i] = 0;
     }
 
-    /* Tworzenie semaforów */
     key_t key_sem = ftok("/tmp", 82);
     if (key_sem == -1) {
         perror("ftok for sem");
@@ -86,7 +86,7 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
         goto fail;
     }
 
-    /* SEM_ENT0_IN = SEM_ENT0_OUT = SEM_ENT1_IN = SEM_ENT1_OUT = 0 */
+    /* Pozostałe semafory (ENT0_IN, ENT0_OUT, ENT1_IN, ENT1_OUT) = 0 */
     arg.val = 0;
     if (semctl(semid, SEM_ENT0_IN,  SETVAL, arg) < 0) goto fail;
     if (semctl(semid, SEM_ENT0_OUT, SETVAL, arg) < 0) goto fail;
