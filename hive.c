@@ -8,12 +8,14 @@
 #include <unistd.h>
 
 #include "hive.h"
+
 union semun {
     int val;                 // wartośc dla SETVAL
     struct semid_ds *buf;    // bufor dla IPC_STAT, IPC_SET
     unsigned short *array;   // tablica dla GETALL, SETALL
     struct seminfo *__buf;   // bufor dla IPC_INFO 
 };
+
 int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **ptr_out)
 {
     key_t key_shm = ftok("/tmp", 81);
@@ -22,7 +24,6 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
         return -1;
     }
 
-    /* tworzymy segment pamięci dzielonej */
     int shmid = shmget(key_shm, sizeof(hive_t), IPC_CREAT | 0666);
     if (shmid < 0) {
         perror("shmget");
@@ -36,7 +37,7 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
         return -1;
     }
 
-    /* Inicjalizacja ula */
+    /* Inicjalizacja wartości w pamięci dzielonej */
     hive->N              = N;
     hive->P              = P;
     hive->current_inside = 0;
@@ -45,15 +46,14 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
     hive->living_bees    = N;
     hive->queen_interval = T_k;
 
-    /* zerujemy info o wejściach */
     for (int i = 0; i < 2; i++) {
-        hive->direction[i]     = 0; /* idle */
+        hive->direction[i]     = 0;
         hive->count[i]         = 0;
         hive->wait_inbound[i]  = 0;
         hive->wait_outbound[i] = 0;
     }
 
-    /* Semafory */
+    /* Tworzenie semaforów */
     key_t key_sem = ftok("/tmp", 82);
     if (key_sem == -1) {
         perror("ftok for sem");
@@ -70,7 +70,6 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
         return -1;
     }
 
-    /* Ustawianie wartości semaforów */
     union semun arg;
 
     /* SEM_MUTEX = 1 */
@@ -87,30 +86,16 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
         goto fail;
     }
 
-    /* SEM_ENT0_IN = 0, SEM_ENT0_OUT = 0, SEM_ENT1_IN = 0, SEM_ENT1_OUT = 0 */
+    /* SEM_ENT0_IN = SEM_ENT0_OUT = SEM_ENT1_IN = SEM_ENT1_OUT = 0 */
     arg.val = 0;
-    if (semctl(semid, SEM_ENT0_IN, SETVAL, arg) < 0) {
-        perror("semctl SEM_ENT0_IN");
-        goto fail;
-    }
-    if (semctl(semid, SEM_ENT0_OUT, SETVAL, arg) < 0) {
-        perror("semctl SEM_ENT0_OUT");
-        goto fail;
-    }
-    if (semctl(semid, SEM_ENT1_IN, SETVAL, arg) < 0) {
-        perror("semctl SEM_ENT1_IN");
-        goto fail;
-    }
-    if (semctl(semid, SEM_ENT1_OUT, SETVAL, arg) < 0) {
-        perror("semctl SEM_ENT1_OUT");
-        goto fail;
-    }
+    if (semctl(semid, SEM_ENT0_IN,  SETVAL, arg) < 0) goto fail;
+    if (semctl(semid, SEM_ENT0_OUT, SETVAL, arg) < 0) goto fail;
+    if (semctl(semid, SEM_ENT1_IN,  SETVAL, arg) < 0) goto fail;
+    if (semctl(semid, SEM_ENT1_OUT, SETVAL, arg) < 0) goto fail;
 
-    /* wszystko OK – zwracamy */
     *shmid_out = shmid;
     *semid_out = semid;
     *ptr_out   = hive;
-
     return 0;
 
 fail:

@@ -1,32 +1,19 @@
-# Przykładowy Makefile
+CC     = gcc
+CFLAGS = -Wall -Wextra -O2 -pthread
+TARGET = ul
 
-CC = gcc
-CFLAGS = -Wall -Wextra -O2
+SRC = main.c hive.c sync.c \
+      pszczelarz.c krolowa.c pszczola.c
 
-OBJ = main.o hive.o sync.o pszczelarz.o krolowa.o pszczola.o
+OBJ = $(SRC:.c=.o)
 
-all: ul
+all: $(TARGET)
 
-ul: $(OBJ)
-	$(CC) $(CFLAGS) -o ul $(OBJ)
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ)
 
-main.o: main.c hive.h
-	$(CC) $(CFLAGS) -c main.c
-
-hive.o: hive.c hive.h
-	$(CC) $(CFLAGS) -c hive.c
-
-sync.o: sync.c hive.h
-	$(CC) $(CFLAGS) -c sync.c
-
-pszczelarz.o: pszczelarz.c hive.h
-	$(CC) $(CFLAGS) -c pszczelarz.c
-
-krolowa.o: krolowa.c hive.h
-	$(CC) $(CFLAGS) -c krolowa.c
-
-pszczola.o: pszczola.c hive.h
-	$(CC) $(CFLAGS) -c pszczola.c
+%.o: %.c hive.h
+	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -f *.o ul
+	rm -f *.o $(TARGET)

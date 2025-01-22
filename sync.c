@@ -8,12 +8,13 @@ void sem_down(int semid, int sem_num)
 {
     struct sembuf op;
     op.sem_num = sem_num;
-    op.sem_op  = -1;  /* P (down) */
+    op.sem_op  = -1;
     op.sem_flg = 0;
 
-    if (semop(semid, &op, 1) < 0) {
+    while (semop(semid, &op, 1) < 0) {
         if (errno != EINTR) {
             perror("semop down");
+            break;
         }
     }
 }
@@ -22,12 +23,13 @@ void sem_up(int semid, int sem_num)
 {
     struct sembuf op;
     op.sem_num = sem_num;
-    op.sem_op  = 1;  /* V (up) */
+    op.sem_op  = 1;
     op.sem_flg = 0;
 
-    if (semop(semid, &op, 1) < 0) {
+    while (semop(semid, &op, 1) < 0) {
         if (errno != EINTR) {
             perror("semop up");
+            break;
         }
     }
 }
