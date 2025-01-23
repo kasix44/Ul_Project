@@ -25,7 +25,7 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
         return -1;
     }
 
-    int shmid = shmget(key_shm, sizeof(hive_t), IPC_CREAT | 0600);
+    int shmid = shmget(key_shm, sizeof(hive_t), IPC_CREAT | 0666);
     if (shmid < 0) {
         perror("shmget");
         return -1;
@@ -62,7 +62,7 @@ int init_system(int N, int P, int T_k, int *shmid_out, int *semid_out, hive_t **
         return -1;
     }
 
-    int semid = semget(key_sem, SEM_COUNT, IPC_CREAT | 0600);
+    int semid = semget(key_sem, SEM_COUNT, IPC_CREAT | 0666);
     if (semid < 0) {
         perror("semget");
         shmdt(hive);
